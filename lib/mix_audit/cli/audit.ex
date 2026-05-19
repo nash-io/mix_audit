@@ -10,7 +10,7 @@ defmodule MixAudit.CLI.Audit do
     # Synchronize and get security advisories
     advisories =
       MixAudit.Repo.advisories()
-      |> Enum.reject(&(&1.id in ignored_advisory_ids or (ignore_unfixed? and Enum.empty?(&1.first_patched_versions))))
+      |> Enum.reject(&(&1.id in ignored_advisory_ids or (ignore_unfixed? and &1.first_patched_versions in [nil, [], [nil]])))
       |> Enum.group_by(& &1.package)
 
     # Get project dependencies
