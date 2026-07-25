@@ -9,7 +9,7 @@ defmodule MixAudit.CLITest do
     test "works without any option" do
       {output, exit_code} = System.cmd("mix", ["deps.audit"])
 
-      assert output == "No vulnerabilities found.\n"
+      assert trim_output(output) == "No vulnerabilities found.\n"
       assert exit_code == 0
     end
 
@@ -18,7 +18,7 @@ defmodule MixAudit.CLITest do
 
       {output, exit_code} = System.cmd("mix", ["deps.audit", "--path", "#{@test_dir}/apps/bar"])
 
-      assert output == """
+      assert trim_output(output) == """
              Name: absinthe\nVersion: 1.4.16
              Lockfile: #{working_dir}/#{@test_dir}/apps/bar/mix.lock
              URL: https://github.com/advisories/GHSA-9mhv-8h52-q7q2
@@ -33,12 +33,12 @@ defmodule MixAudit.CLITest do
       assert exit_code == 1
 
       {output, exit_code} = System.cmd("mix", ["deps.audit", "--path", "#{@test_dir}/apps/foo"])
-      assert output == "No vulnerabilities found.\n"
+      assert trim_output(output) == "No vulnerabilities found.\n"
       assert exit_code == 0
 
       {output, exit_code} = System.cmd("mix", ["deps.audit", "--path", "#{@test_dir}"])
 
-      assert output == """
+      assert trim_output(output) == """
              Name: plug
              Version: 1.9.0
              Lockfile: #{working_dir}/#{@test_dir}/mix.lock
@@ -68,8 +68,9 @@ defmodule MixAudit.CLITest do
 
       {output, exit_code} = System.cmd("mix", ["deps.audit", "--path", "#{@test_dir}/apps/bar", "--ignore-unfixed"])
 
-      assert output == """
-             Name: absinthe\nVersion: 1.4.16
+      assert trim_output(output) == """
+             Name: absinthe
+             Version: 1.4.16
              Lockfile: #{working_dir}/#{@test_dir}/apps/bar/mix.lock
              URL: https://github.com/advisories/GHSA-9mhv-8h52-q7q2
              Title: Absinthe: Quadratic fragment-name uniqueness check
@@ -83,12 +84,12 @@ defmodule MixAudit.CLITest do
       assert exit_code == 1
 
       {output, exit_code} = System.cmd("mix", ["deps.audit", "--path", "#{@test_dir}/apps/foo", "--ignore-unfixed"])
-      assert output == "No vulnerabilities found.\n"
+      assert trim_output(output) == "No vulnerabilities found.\n"
       assert exit_code == 0
 
       {output, exit_code} = System.cmd("mix", ["deps.audit", "--path", "#{@test_dir}", "--ignore-unfixed"])
 
-      assert output == """
+      assert trim_output(output) == """
              Name: plug
              Version: 1.9.0
              Lockfile: #{working_dir}/#{@test_dir}/mix.lock
@@ -138,12 +139,12 @@ defmodule MixAudit.CLITest do
         File.write!(unfixed_dir <> "/mix.lock", lock_content)
 
         {output, exit_code} = System.cmd("mix", ["deps.audit", "--path", unfixed_dir, "--ignore-unfixed"])
-        assert output == "No vulnerabilities found.\n"
+        assert trim_output(output) == "No vulnerabilities found.\n"
         assert exit_code == 0
 
         {output, exit_code} = System.cmd("mix", ["deps.audit", "--path", unfixed_dir])
 
-        assert output == """
+        assert trim_output(output) == """
                Name: #{unfixed_advisory.package}
                Version: #{vulnerable_version}
                Lockfile: #{working_dir}/#{unfixed_dir}/mix.lock
@@ -156,6 +157,15 @@ defmodule MixAudit.CLITest do
 
         assert exit_code == 1
       end
+    end
+  end
+
+  defp trim_output(output) do
+    if String.starts_with?(output, "Compiling ") or String.starts_with?(output, "Generated mix_audit app") do
+      [_compiling | tail] = String.split(output, "\n")
+      Enum.join(tail, "\n")
+    else
+      output
     end
   end
 end

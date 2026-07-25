@@ -1,8 +1,11 @@
 defmodule MixAudit.CLI.Audit do
+  @moduledoc false
   def run(opts) do
     # Get and sanitize options
     path = Path.expand(Keyword.get(opts, :path, "."))
     format = Keyword.get(opts, :format)
+    fix? = Keyword.get(opts, :fix, false)
+    attempt_fix? = Keyword.get(opts, :attempt_fix, false)
     ignored_advisory_ids = ignored_advisory_ids(opts)
     ignored_package_names = ignored_package_names(opts)
     ignore_unfixed? = !!Keyword.get(opts, :ignore_unfixed)
@@ -10,7 +13,9 @@ defmodule MixAudit.CLI.Audit do
     # Synchronize and get security advisories
     advisories =
       MixAudit.Repo.advisories()
-      |> Enum.reject(&(&1.id in ignored_advisory_ids or (ignore_unfixed? and &1.first_patched_versions in [nil, [], [nil]])))
+      |> Enum.reject(
+        &(&1.id in ignored_advisory_ids or (ignore_unfixed? and &1.first_patched_versions in [nil, [], [nil]]))
+      )
       |> Enum.group_by(& &1.package)
 
     # Get project dependencies
@@ -28,10 +33,64 @@ defmodule MixAudit.CLI.Audit do
     # Output the result
     IO.puts(String.trim(formatted_report))
 
-    unless report.pass do
-      System.stop(1)
+    if not report.pass do
+      if fix? or attempt_fix? do
+        fix_results = MixAudit.Fix.call(report.vulnerabilities, path)
+        print_fix_summary(fix_results)
+
+        all_fixed? = Enum.empty?(fix_results.manual) and Enum.empty?(fix_results.failed)
+
+        if fix? and not all_fixed? do
+          System.halt(1)
+        end
+      else
+        System.halt(1)
+      end
     end
   end
+
+  defp print_fix_summary(%{fixed: fixed, manual: manual, failed: failed}) do
+    IO.puts("")
+    IO.puts("Fix summary:")
+
+    if not Enum.empty?(fixed) do
+      IO.puts("  Fixed (#{length(fixed)}):")
+
+      Enum.each(fixed, fn %{package: pkg, from: from, to: to} ->
+        IO.puts("    #{pkg}: #{from} -> #{to}")
+      end)
+    end
+
+    if not Enum.empty?(manual) do
+      IO.puts("  Could not auto-fix (#{length(manual)}):")
+
+      Enum.each(manual, fn %{package: pkg, reason: reason} ->
+        IO.puts("    #{pkg}: #{format_manual_reason(reason)}")
+      end)
+    end
+
+    if not Enum.empty?(failed) do
+      IO.puts("  Update failed (#{length(failed)}):")
+
+      Enum.each(failed, fn %{package: pkg, reason: {code, output}} ->
+        IO.puts("    #{pkg}: exited with code #{code} — #{String.trim(output)}")
+      end)
+    end
+  end
+
+  defp format_manual_reason(:requires_major_bump), do: "patched version requires a major version bump — update manually"
+
+  defp format_manual_reason(:no_patched_versions), do: "no patched version listed in advisory"
+
+  defp format_manual_reason(:constraint_in_mix_exs),
+    do: "version constraint in mix.exs prevents update — loosen the constraint and re-run"
+
+  defp format_manual_reason(:malformed_version), do: "installed version string could not be parsed — update manually"
+
+  defp format_manual_reason(:package_removed),
+    do: "package disappeared from the lockfile after update — inspect mix.lock manually"
+
+  defp format_manual_reason(reason), do: inspect(reason)
 
   defp ignored_advisory_ids(opts) do
     ignored_ids_from_cli = ignored_advisory_ids_from_cli(opts)
