@@ -53,7 +53,7 @@ defmodule MixAudit.CLI.Audit do
     IO.puts("")
     IO.puts("Fix summary:")
 
-    if !Enum.empty?(fixed) do
+    if not Enum.empty?(fixed) do
       IO.puts("  Fixed (#{length(fixed)}):")
 
       Enum.each(fixed, fn %{package: pkg, from: from, to: to} ->
@@ -61,7 +61,7 @@ defmodule MixAudit.CLI.Audit do
       end)
     end
 
-    if !Enum.empty?(manual) do
+    if not Enum.empty?(manual) do
       IO.puts("  Could not auto-fix (#{length(manual)}):")
 
       Enum.each(manual, fn %{package: pkg, reason: reason} ->
@@ -69,7 +69,7 @@ defmodule MixAudit.CLI.Audit do
       end)
     end
 
-    if !Enum.empty?(failed) do
+    if not Enum.empty?(failed) do
       IO.puts("  Update failed (#{length(failed)}):")
 
       Enum.each(failed, fn %{package: pkg, reason: {code, output}} ->
@@ -80,7 +80,7 @@ defmodule MixAudit.CLI.Audit do
 
   defp format_manual_reason(:requires_major_bump), do: "patched version requires a major version bump — update manually"
 
-  defp format_manual_reason(:no_patched_versions), do: "no patched version listed in advisory — update manually"
+  defp format_manual_reason(:no_patched_versions), do: "no patched version listed in advisory"
 
   defp format_manual_reason(:constraint_in_mix_exs),
     do: "version constraint in mix.exs prevents update — loosen the constraint and re-run"
