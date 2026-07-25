@@ -96,6 +96,7 @@ defmodule MixAudit.Fix do
 
   defp find_min_same_major(_current, nil), do: {:error, :no_patched_versions}
   defp find_min_same_major(_current, []), do: {:error, :no_patched_versions}
+  defp find_min_same_major(_current, [nil]), do: {:error, :no_patched_versions}
 
   defp find_min_same_major(current, patched_vsn_strs) do
     same_major =

@@ -12,7 +12,8 @@ defmodule MixAudit.CLI do
           help: :boolean,
           format: :string,
           path: :string,
-          fix: :boolean
+          fix: :boolean,
+          attempt_fix: :boolean
         ]
       )
 
