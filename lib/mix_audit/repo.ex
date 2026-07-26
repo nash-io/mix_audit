@@ -1,12 +1,12 @@
 defmodule MixAudit.Repo do
-  alias Hex.Repo, as: HexRepo
   alias MixAudit.Dependency
 
   @spec put_advisories([Dependency.t()]) :: [Dependency.t()]
   def put_advisories(dependencies) do
-    dependencies
-    |> Enum.map(fn %Dependency{} = dependency ->
-      {:ok, {200, _, %{releases: releases} = result}} = HexRepo.get_package(dependency.repo, dependency.package, _etag = nil)
+    hex_config = :hex_core.default_config()
+
+    Enum.map(dependencies, fn %Dependency{} = dependency ->
+      {:ok, {200, _, %{releases: releases} = result}} = :hex_repo.get_package(hex_config, dependency.package)
       pkg_advisories = result[:advisories] || []
       release = Enum.find(releases, &(&1.version == dependency.version))
       advisory_indexes = release[:advisory_indexes] || []
@@ -14,7 +14,14 @@ defmodule MixAudit.Repo do
       release_advisories =
         Enum.map(advisory_indexes, fn advisory_index ->
           advisory = Enum.at(pkg_advisories, advisory_index)
-          first_patched_release = Enum.find(releases, &(Version.compare(&1.version, dependency.version) == :gt and advisory_index not in (&1[:advisory_indexes] || [])))
+
+          first_patched_release =
+            Enum.find(
+              releases,
+              &(Version.compare(&1.version, dependency.version) == :gt and
+                  advisory_index not in (&1[:advisory_indexes] || []))
+            )
+
           first_patched_version = first_patched_release && first_patched_release.version
 
           %MixAudit.Advisory{
