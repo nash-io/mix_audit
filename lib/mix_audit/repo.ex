@@ -1,50 +1,38 @@
 defmodule MixAudit.Repo do
-  @url "https://github.com/mirego/elixir-security-advisories.git"
+  alias Hex.Repo, as: HexRepo
+  alias MixAudit.Dependency
 
-  def advisories do
-    synchronize()
+  @spec put_advisories([Dependency.t()]) :: [Dependency.t()]
+  def put_advisories(dependencies) do
+    dependencies
+    |> Enum.map(fn %Dependency{} = dependency ->
+      {:ok, {200, _, %{releases: releases} = result}} = HexRepo.get_package(dependency.repo, dependency.package, _etag = nil)
+      pkg_advisories = result[:advisories] || []
+      release = Enum.find(releases, &(&1.version == dependency.version))
+      advisory_indexes = release[:advisory_indexes] || []
 
-    package_advisories_path()
-    |> Path.wildcard()
-    |> Enum.map(&map_advisory/1)
+      release_advisories =
+        Enum.map(advisory_indexes, fn advisory_index ->
+          advisory = Enum.at(pkg_advisories, advisory_index)
+          first_patched_release = Enum.find(releases, &(Version.compare(&1.version, dependency.version) == :gt and advisory_index not in (&1[:advisory_indexes] || [])))
+          first_patched_version = first_patched_release && first_patched_release.version
+
+          %MixAudit.Advisory{
+            id: advisory.id,
+            package: dependency.package,
+            url: advisory.html_url,
+            title: advisory.summary,
+            severity: translate_severity(advisory.severity),
+            cvss_score: advisory.cvss_score,
+            first_patched_version: first_patched_version
+          }
+        end)
+
+      %{dependency | advisories: release_advisories}
+    end)
   end
 
-  defp synchronize do
-    repo_path = path()
-
-    if File.dir?(repo_path) do
-      previous_path = File.cwd!()
-      File.cd(repo_path)
-
-      System.cmd("git", ["pull", "--rebase", "--quiet", "origin", "main"])
-
-      File.cd(previous_path)
-    else
-      System.cmd("git", ["clone", "--quiet", @url, repo_path])
-    end
-  end
-
-  defp path do
-    Path.join([System.user_home(), ".local", "share", "elixir-security-advisories-mirego"])
-  end
-
-  defp package_advisories_path do
-    Path.join([path(), "packages", "**", "*.yml"])
-  end
-
-  defp map_advisory(advisory_path) do
-    {:ok, advisory_data} = YamlElixir.read_from_file(advisory_path)
-
-    %MixAudit.Advisory{
-      id: advisory_data["id"],
-      package: advisory_data["package"],
-      disclosure_date: advisory_data["disclosure_date"],
-      url: advisory_data["link"],
-      title: advisory_data["title"],
-      description: advisory_data["description"],
-      vulnerable_version_ranges: advisory_data["vulnerable_version_ranges"] || [],
-      first_patched_versions: advisory_data["first_patched_versions"] || [],
-      severity: advisory_data["severity"]
-    }
-  end
+  defp translate_severity(:SEVERITY_HIGH), do: "high"
+  defp translate_severity(:SEVERITY_MEDIUM), do: "medium"
+  defp translate_severity(:SEVERITY_LOW), do: "low"
 end

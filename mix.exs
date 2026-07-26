@@ -32,6 +32,7 @@ defmodule MixAudit.MixProject do
 
   defp deps do
     [
+      {:hex, "~> 2.5", git: "https://github.com/hexpm/hex", tag: "v2.5.1"},
       {:yaml_elixir, "~> 2.11"},
       {:jason, "~> 1.4"},
       {:ex_doc, ">= 0.0.0", only: :dev},

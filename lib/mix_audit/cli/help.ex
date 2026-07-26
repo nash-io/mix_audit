@@ -14,9 +14,7 @@ defmodule MixAudit.CLI.Help do
     IO.puts("--ignore-unfixed        Ignore vulnerabilities that haven't been fixed yet")
     IO.puts("--fix                   Update vulnerable packages to a patched version and halts on failure")
 
-    IO.puts(
-      "--attempt-fix           Attempt to update vulnerable packages to a patched version and do not halt on failure"
-    )
+    IO.puts("--attempt-fix           Attempt to update vulnerable packages to a patched version and do not halt on failure")
 
     IO.puts("")
     System.halt(0)
