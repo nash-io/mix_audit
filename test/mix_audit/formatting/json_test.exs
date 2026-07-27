@@ -10,12 +10,9 @@ defmodule MixAudit.Formatting.JSONTest do
         %MixAudit.Vulnerability{
           advisory: %MixAudit.Advisory{
             id: "ABC-123",
-            description: "Bar",
             title: "Foo",
             package: "foo",
-            disclosure_date: "1970-01-01",
             url: "https://example.com",
-            vulnerable_version_ranges: ["~> 0.7.2"],
             severity: "high"
           },
           dependency: %MixAudit.Dependency{
@@ -36,18 +33,18 @@ defmodule MixAudit.Formatting.JSONTest do
                "dependency" => %{
                  "package" => "foo",
                  "version" => "0.7.4",
-                 "lockfile" => "mix.lock"
+                 "lockfile" => "mix.lock",
+                 "advisories" => nil,
+                 "repo" => nil
                },
                "advisory" => %{
                  "id" => "ABC-123",
-                 "description" => "Bar",
                  "title" => "Foo",
                  "package" => "foo",
-                 "disclosure_date" => "1970-01-01",
                  "url" => "https://example.com",
-                 "vulnerable_version_ranges" => ["~> 0.7.2"],
                  "severity" => "high",
-                 "first_patched_versions" => []
+                 "cvss_score" => nil,
+                 "first_patched_version" => nil
                }
              }
            ]

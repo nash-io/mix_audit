@@ -12,17 +12,20 @@ defmodule MixAudit.ProjectTest do
              %MixAudit.Dependency{
                lockfile: "test/support/apps/bar/mix.lock",
                package: "absinthe",
-               version: "1.4.16"
+               version: "1.4.16",
+               repo: "hexpm"
              },
              %MixAudit.Dependency{
                lockfile: "test/support/mix.lock",
                package: "plug",
-               version: "1.9.0"
+               version: "1.9.0",
+               repo: "hexpm"
              },
              %MixAudit.Dependency{
                lockfile: "test/support/apps/foo/mix.lock",
                package: "telemetry",
-               version: "0.4.1"
+               version: "0.4.1",
+               repo: "hexpm"
              }
            ]
   end

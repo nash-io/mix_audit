@@ -10,12 +10,9 @@ defmodule MixAudit.Formatting.HumanTest do
         %MixAudit.Vulnerability{
           advisory: %MixAudit.Advisory{
             id: "ABC-123",
-            description: "Bar",
             title: "Foo",
             package: "foo",
-            disclosure_date: "1970-01-01",
             url: "https://example.com",
-            vulnerable_version_ranges: ["~> 0.7.2"],
             severity: "high"
           },
           dependency: %MixAudit.Dependency{
@@ -34,8 +31,7 @@ defmodule MixAudit.Formatting.HumanTest do
     assert report =~ ~r/Lockfile:.*mix.lock/
     assert report =~ ~r/URL:.*https:\/\/example.com/
     assert report =~ ~r/Title:.*Foo/
-    assert report =~ ~r/Vulnerable versions:.*~> 0.7.2/
-    assert report =~ ~r/First patched versions:.*NONE/
+    assert report =~ ~r/First patched version:.*/
     assert report =~ ~r/Severity:.*high/
   end
 

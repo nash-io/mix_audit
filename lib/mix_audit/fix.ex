@@ -35,11 +35,21 @@ defmodule MixAudit.Fix do
   defp fix_package(package, vulnerabilities, path, updater, dependency_reader) do
     current_version = List.first(vulnerabilities).dependency.version
 
-    case find_required_minimum_patch(current_version, vulnerabilities) do
-      {:error, reason} ->
-        {:manual, reason}
+    minimum_patch =
+      vulnerabilities
+      |> Enum.map(& &1.advisory.first_patched_version)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.sort(&(Version.compare(&1, &2) in [:lt, :eq]))
+      |> List.first()
 
-      {:ok, minimum_patch} ->
+    cond do
+      is_nil(minimum_patch) ->
+        {:manual, :no_patched_versions}
+
+      Version.parse(current_version) == :error ->
+        {:manual, :malformed_version}
+
+      true ->
         case updater.(package, path) do
           {:error, reason} -> {:failed, reason}
           :ok -> verify_update(package, path, current_version, minimum_patch, dependency_reader)
@@ -67,49 +77,6 @@ defmodule MixAudit.Fix do
 
       :error ->
         {:manual, :constraint_in_mix_exs}
-    end
-  end
-
-  # For each advisory, finds the minimum patched version in the same major series.
-  # Returns the maximum of those per-advisory minimums — the version that fixes ALL CVEs.
-  defp find_required_minimum_patch(current_vsn_str, vulnerabilities) do
-    case Version.parse(current_vsn_str) do
-      :error -> {:error, :malformed_version}
-      {:ok, current} -> collect_per_advisory_minimums(current, vulnerabilities)
-    end
-  end
-
-  defp collect_per_advisory_minimums(current, vulnerabilities) do
-    vulnerabilities
-    |> Enum.reduce_while({:ok, []}, fn vuln, {:ok, acc} ->
-      case find_min_same_major(current, vuln.advisory.first_patched_versions) do
-        {:ok, v} -> {:cont, {:ok, [v | acc]}}
-        {:error, _} = err -> {:halt, err}
-      end
-    end)
-    |> case do
-      {:ok, []} -> {:error, :no_patched_versions}
-      {:ok, minimums} -> {:ok, List.last(Enum.sort(minimums, Version))}
-      {:error, _} = err -> err
-    end
-  end
-
-  defp find_min_same_major(_current, nil), do: {:error, :no_patched_versions}
-  defp find_min_same_major(_current, []), do: {:error, :no_patched_versions}
-  defp find_min_same_major(_current, [nil]), do: {:error, :no_patched_versions}
-
-  defp find_min_same_major(current, patched_vsn_strs) do
-    same_major =
-      Enum.flat_map(patched_vsn_strs, fn vsn_str ->
-        case Version.parse(vsn_str) do
-          {:ok, v} when v.major == current.major -> [v]
-          _ -> []
-        end
-      end)
-
-    case same_major do
-      [] -> {:error, :requires_major_bump}
-      versions -> {:ok, hd(Enum.sort(versions, Version))}
     end
   end
 end

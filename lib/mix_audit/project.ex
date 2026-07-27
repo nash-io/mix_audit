@@ -31,19 +31,15 @@ defmodule MixAudit.Project do
     end
   end
 
-  defp map_dependency({:hex, package, version, _, _, _, _}, lockfile) do
-    do_map_dependency(package, version, lockfile)
+  defp map_dependency({:hex, package, version, _, _, repo, _}, lockfile) do
+    %MixAudit.Dependency{package: to_string(package), version: version, repo: repo, lockfile: lockfile}
   end
 
-  defp map_dependency({:hex, package, version, _, _, _, _, _}, lockfile) do
-    do_map_dependency(package, version, lockfile)
+  defp map_dependency({:hex, package, version, _, _, _, repo, _}, lockfile) do
+    %MixAudit.Dependency{package: to_string(package), version: version, repo: repo, lockfile: lockfile}
   end
 
   defp map_dependency(_, _), do: nil
-
-  defp do_map_dependency(package, version, lockfile) do
-    %MixAudit.Dependency{package: to_string(package), version: version, lockfile: lockfile}
-  end
 
   defp assert_no_merge_conflicts_in_lockfile(lockfile, info) do
     if String.contains?(info, ~w(<<<<<<< ======= >>>>>>>)) do

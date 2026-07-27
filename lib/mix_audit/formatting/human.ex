@@ -21,9 +21,8 @@ defmodule MixAudit.Formatting.Human do
     #{colorized_text("Lockfile:", :red)} #{vulnerability.dependency.lockfile}
     #{colorized_text("URL:", :red)} #{vulnerability.advisory.url}
     #{colorized_text("Title:", :red)} #{String.trim(vulnerability.advisory.title)}
-    #{colorized_text("Severity:", :red)} #{vulnerability.advisory.severity}
-    #{colorized_text("Vulnerable versions:", :red)} #{versions(vulnerability.advisory.vulnerable_version_ranges)}
-    #{colorized_text("First patched versions:", :red)} #{versions(vulnerability.advisory.first_patched_versions)}
+    #{colorized_text("Severity:", :red)} #{vulnerability.advisory.severity} (#{vulnerability.advisory.cvss_score})
+    #{colorized_text("First patched version:", :red)}#{if is_nil(vulnerability.advisory.first_patched_version), do: "", else: " #{vulnerability.advisory.first_patched_version}"}
     """
   end
 
@@ -32,7 +31,4 @@ defmodule MixAudit.Formatting.Human do
     |> IO.ANSI.format()
     |> IO.chardata_to_string()
   end
-
-  defp versions([]), do: "NONE"
-  defp versions(versions), do: Enum.join(versions, ", ")
 end

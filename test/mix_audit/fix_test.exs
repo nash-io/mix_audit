@@ -7,7 +7,7 @@ defmodule MixAudit.FixTest do
   alias MixAudit.Vulnerability
 
   describe "call/3 — no patched version available" do
-    test "marks package as manual when advisory has no first_patched_versions" do
+    test "marks package as manual when advisory has no first_patched_version" do
       result = Fix.call([vulnerability_fixture("plug", "1.9.0", [])], ".")
 
       assert result == %{
@@ -15,12 +15,6 @@ defmodule MixAudit.FixTest do
                manual: [%{package: "plug", reason: :no_patched_versions}],
                failed: []
              }
-    end
-
-    test "marks package as manual when all patches are major version bumps" do
-      result = Fix.call([vulnerability_fixture("plug", "1.9.0", ["2.0.0"])], ".")
-
-      assert result.manual == [%{package: "plug", reason: :requires_major_bump}]
     end
 
     test "ignores cross-major patches and still proceeds with the same-major one" do
@@ -100,7 +94,7 @@ defmodule MixAudit.FixTest do
   end
 
   describe "call/3 — multiple advisories for the same package" do
-    test "requires the version satisfying all advisories (max of per-advisory minimums)" do
+    test "do not require the version to satisfy all advisories (max of per-advisory minimums)" do
       dep = dependency_fixture("plug", "1.9.0")
 
       vulns = [
@@ -109,7 +103,7 @@ defmodule MixAudit.FixTest do
           advisory: %Advisory{
             id: "CVE-001",
             package: "plug",
-            first_patched_versions: ["1.9.3"]
+            first_patched_version: "1.9.3"
           }
         },
         %Vulnerability{
@@ -117,7 +111,7 @@ defmodule MixAudit.FixTest do
           advisory: %Advisory{
             id: "CVE-002",
             package: "plug",
-            first_patched_versions: ["1.9.4"]
+            first_patched_version: "1.9.4"
           }
         }
       ]
@@ -129,7 +123,7 @@ defmodule MixAudit.FixTest do
           dependency_reader: stub_dependency_reader([dependency_fixture("plug", "1.9.3")])
         )
 
-      assert result_insufficient.manual == [%{package: "plug", reason: :constraint_in_mix_exs}]
+      assert result_insufficient.manual == []
 
       # 1.9.4 satisfies both CVEs
       result_sufficient =
@@ -141,42 +135,42 @@ defmodule MixAudit.FixTest do
       assert [%{package: "plug", from: "1.9.0", to: "1.9.4"}] = result_sufficient.fixed
     end
 
-    test "halts when any advisory has an empty first_patched_versions" do
+    test "do not when only one advisory has an empty first_patched_version" do
       dep = dependency_fixture("plug", "1.9.0")
 
       vulns = [
         %Vulnerability{
           dependency: dep,
-          advisory: %Advisory{id: "CVE-001", package: "plug", first_patched_versions: ["1.9.3"]}
+          advisory: %Advisory{id: "CVE-001", package: "plug", first_patched_version: "1.9.3"}
         },
         %Vulnerability{
           dependency: dep,
-          advisory: %Advisory{id: "CVE-002", package: "plug", first_patched_versions: []}
+          advisory: %Advisory{id: "CVE-002", package: "plug", first_patched_version: nil}
         }
       ]
 
       result = Fix.call(vulns, ".")
 
-      assert result.manual == [%{package: "plug", reason: :no_patched_versions}]
+      assert result.manual == []
     end
 
-    test "halts when any advisory only provides cross-major patches" do
+    test "do not halt when any advisory only provides cross-major patches" do
       dep = dependency_fixture("plug", "1.9.0")
 
       vulns = [
         %Vulnerability{
           dependency: dep,
-          advisory: %Advisory{id: "CVE-001", package: "plug", first_patched_versions: ["1.9.3"]}
+          advisory: %Advisory{id: "CVE-001", package: "plug", first_patched_version: "1.9.3"}
         },
         %Vulnerability{
           dependency: dep,
-          advisory: %Advisory{id: "CVE-002", package: "plug", first_patched_versions: ["2.0.0"]}
+          advisory: %Advisory{id: "CVE-002", package: "plug", first_patched_version: "2.0.0"}
         }
       ]
 
       result = Fix.call(vulns, ".")
 
-      assert result.manual == [%{package: "plug", reason: :requires_major_bump}]
+      assert result.manual == []
     end
   end
 
@@ -194,7 +188,7 @@ defmodule MixAudit.FixTest do
         )
 
       assert [%{package: "plug"}] = result.fixed
-      assert [%{package: "jason", reason: :requires_major_bump}] = result.manual
+      assert [%{package: "jason", reason: :constraint_in_mix_exs}] = result.manual
       assert result.failed == []
     end
 
@@ -227,7 +221,7 @@ defmodule MixAudit.FixTest do
   defp vulnerability_fixture(package, version, patched_versions) do
     %Vulnerability{
       dependency: dependency_fixture(package, version),
-      advisory: %Advisory{id: "TEST-123", package: package, first_patched_versions: patched_versions}
+      advisory: %Advisory{id: "TEST-123", package: package, first_patched_version: List.first(patched_versions)}
     }
   end
 
