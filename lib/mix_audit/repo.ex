@@ -39,6 +39,7 @@ defmodule MixAudit.Repo do
     end)
   end
 
+  defp translate_severity(:SEVERITY_CRITICAL), do: "critical"
   defp translate_severity(:SEVERITY_HIGH), do: "high"
   defp translate_severity(:SEVERITY_MEDIUM), do: "medium"
   defp translate_severity(:SEVERITY_LOW), do: "low"
